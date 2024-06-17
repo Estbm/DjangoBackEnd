@@ -12,15 +12,21 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta  # import this library top of the settings.py file
+import os.path
+import environ
+
+env = environ.Env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+environ.Env.read_env(os.path.join(BASE_DIR, '.env.local'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-eme+z-lcqm9cj_ijny3k0)89t=m6&$(&p9k(p4h+9xnzk&62vy"
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -81,14 +87,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+def get_db_config(environ_var='DATABASE_URL'):
+    """Get Database configuration."""
+    options = env.db(var=environ_var, default='sqlite:///db.sqlite3')
+    if options.get('ENGINE') != 'django.db.backends.sqlite3':
+        return options
+
+    # This will allow use a relative to the project root DB path
+    # for SQLite like 'sqlite:///db.sqlite3'
+    if not options['NAME'] == ':memory:' and not os.path.isabs(options['NAME']):
+        options.update({'NAME': os.path.join(BASE_DIR, options['NAME'])})
+
+    return options
+
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    'default': get_db_config()
 }
 
 # Password validation
@@ -113,8 +131,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
 LANGUAGE_CODE = "es-EC"
-
-TIME_ZONE = "UTC"
+TIME_ZONE = 'America/Guayaquil'
 
 USE_I18N = True
 
@@ -132,9 +149,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # put on your settings.py file below INSTALLED_APPS
 REST_FRAMEWORK = {
-    # 'DEFAULT_PERMISSION_CLASSES': (
-    #     'rest_framework.permissions.IsAuthenticated',
-    # ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.DjangoModelPermissions'
+    ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
