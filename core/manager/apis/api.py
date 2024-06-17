@@ -47,7 +47,7 @@ def employees_api_view(request):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET', 'PUT', 'DELETE'])
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def employee_detail_api_view(request, pk=None):
     # existe un empleado con el id enviado
@@ -72,6 +72,22 @@ def employee_detail_api_view(request, pk=None):
             permission.has_permission(request, None)
             # serializamos al empleado
             employee_serializer = EmployeeSerializer(employee, data=request.data)
+            if employee_serializer.is_valid():
+                employee_serializer.save()
+                return Response({'mensaje': 'Empleado actualizado exitosamente', 'resultado': employee_serializer.data},
+                                status=status.HTTP_200_OK)
+            return Response({
+                'mensaje': 'Error al actualizar el empleado',
+                'errores': employee_serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        elif request.method == 'PATCH':
+            permission_required = 'change_employee'
+            # validacion de permisos
+            permission = IsInGroupPermission(permission_required)
+            permission.has_permission(request, None)
+            # serializamos al empleado
+            employee_serializer = EmployeeSerializer(employee, data=request.data, partial=True)
             if employee_serializer.is_valid():
                 employee_serializer.save()
                 return Response({'mensaje': 'Empleado actualizado exitosamente', 'resultado': employee_serializer.data},
